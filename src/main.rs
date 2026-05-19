@@ -1,5 +1,6 @@
 
-type byte = u8;
+mod cpu;
+pub type byte = u8;
 
 const ROM_SIZE:usize = 0x8000; // 16KiB // ROM Bank 00 to Bank 01-NN
 const VRAM_SIZE:usize = 0x2000; // 8KiB // Video RAM
@@ -8,7 +9,7 @@ const WRAM_SIZE:usize = 0x2000; // 8KiB // Work RAM
 const OAM_SIZE:usize = 0x00A0; // 160B  // Object Attribute Memory
 const HRAM_SIZE:usize = 0x007F; // 127B // High RAM
 
-struct mmu {
+pub struct mmu {
     
     rom: [byte; ROM_SIZE],
     vram: [byte; VRAM_SIZE],
@@ -34,7 +35,7 @@ impl mmu {
         }
 
     }
-                                                                        
+
     pub fn write(&mut self, addr: u16, val: byte) {
         match addr {
             0x0000..=0x7FFF => self.rom[addr as usize] = val,
@@ -48,7 +49,6 @@ impl mmu {
         }
 
     }
-
 
 }
 fn main() {
