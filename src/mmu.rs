@@ -1,4 +1,4 @@
-use byte;
+use crate::byte;
 
 const ROM_SIZE:usize = 0x8000; // 16KiB // ROM Bank 00 to Bank 01-NN
 const VRAM_SIZE:usize = 0x2000; // 8KiB // Video RAM

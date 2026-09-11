@@ -4,6 +4,7 @@ use crate::cart::CartContext;
 mod cpu;
 mod instruction;
 mod cart;
+mod mmu;
 pub type byte = u8;
 
 fn main() {
