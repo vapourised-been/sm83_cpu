@@ -1,7 +1,12 @@
 use crate::byte;
+use crate::instruction;
 use crate::mmu;
+// use crate::mmu::bus_read;
+use crate::instruction::opcode_instruction;
+use crate::instruction::AddressMode;
+use crate::instruction::Instruction;
 
-struct reg_8 {
+struct CpuReg {
     b: byte ,
     c: byte ,
     d: byte ,
@@ -10,57 +15,46 @@ struct reg_8 {
     l: byte ,
     a: byte ,
     f: byte ,
-
+    sp: WordRegister,
+    pc: WordRegister,
 }
-    // sp: word_register,
-    // pc: word_register,
-    
+
     // ie: byte, // interrupt enable
     // ir: byte, // instruction Register
 
 
-struct word_register {
+struct WordRegister {
     low: byte,
     high: byte,
 
 }
 
-struct reg_pair {
-    low: reg_8,
-    high: reg_8,
 
-}
-
-enum cond {
-    nz,
-    z,
-    nc,
-    c,
-}
 
 enum size_flag {
     Imm8(byte),
     Imm16(u16),
 }
 
-// TODO opcode struct/enum
-
-
-struct instruction {
-
-    instruction_type: Option<type>,
-    addr_mode: address_mode, // TODO make addr type from instruction set
-
-    reg1: Option<reg_type>,
-    reg2: Option<reg_type>,
-    // instr_size: Option<size_flag>,
-    // dest_addr:,
-    // mnemonic: Option<OPCODE>,
-    cond_type: Option<cond>,
-    param: byte,
-
-}
 
 // TODO cpu_context
 
 
+struct CpuContext{
+    regs: CpuReg,
+    fetch: u16,
+    mem_dest: u16,
+    current_opcode: byte,
+    current_instr: instruction::Instruction,
+    halted: bool, // status can be joined to one no? 
+    stepping: bool,
+}
+
+impl CpuContext {
+    fn fetch_instruction(&self){
+        self.current_opcode = mmu::bus_read(&self, addr)
+
+    }
+
+
+}
