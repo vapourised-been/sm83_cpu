@@ -1,26 +1,43 @@
-use crate::byte;
+use std::array;
+use std::str::Bytes;
+
+use crate::Byte;
+use crate::cart;
+use crate::cart::CartContext;
 
 const ROM_SIZE:usize = 0x8000; // 16KiB // ROM Bank 00 to Bank 01-NN
 const VRAM_SIZE:usize = 0x2000; // 8KiB // Video RAM
-const ERAM_SIZE:usize = 0x2000; // 8KiB // Mirrors of WRAM 
 const WRAM_SIZE:usize = 0x2000; // 8KiB // Work RAM
+const ERAM_SIZE:usize = 0x2000; // 8KiB // Mirrors of WRAM 
 const OAM_SIZE:usize = 0x00A0; // 160B  // Object Attribute Memory
 const HRAM_SIZE:usize = 0x007F; // 127B // High RAM
 
-pub struct mmu {
+pub struct MemUnit {
     
-    rom: [byte; ROM_SIZE],
-    vram: [byte; VRAM_SIZE],
-    eram: [byte; ERAM_SIZE],
-    wram: [byte; WRAM_SIZE],
-    oam: [byte; OAM_SIZE],
-    hram: [byte; HRAM_SIZE],
-    interrupt_en: byte, 
+    rom: [Byte; ROM_SIZE],
+    vram: [Byte; VRAM_SIZE],
+    wram: [Byte; WRAM_SIZE],
+    eram: [Byte; ERAM_SIZE],
+    oam: [Byte; OAM_SIZE],
+    hram: [Byte; HRAM_SIZE],
+    interrupt_en: Byte, 
 }
 
 
-impl mmu {
-    pub fn bus_read(&self, addr: u16) -> byte {
+impl MemUnit {
+    pub fn new(cart: &CartContext) -> MemUnit{
+        return Self{
+            rom: *((cart.rom_data).as_array().unwrap()),
+            vram: array::repeat(0x00),
+            wram: array::repeat(0x00),
+            eram: array::repeat(0x00),
+            oam: array::repeat(0x00),
+            hram: array::repeat(0x00),
+            interrupt_en: 0,
+        }
+    }
+
+    pub fn bus_read(&self, addr: u16) -> Byte {
         match addr {
             0x0000..=0x7FFF => self.rom[addr as usize],
             0x8000..=0x9FFF => self.vram[addr as usize - 0x8000],
@@ -34,7 +51,7 @@ impl mmu {
 
     }
 
-    pub fn bus_write(&mut self, addr: u16, val: byte) {
+    pub fn bus_write(&mut self, addr: u16, val: Byte) {
         match addr {
             0x0000..=0x7FFF => self.rom[addr as usize] = val,
             0x8000..=0x9FFF => self.vram[addr as usize - 0x8000] = val,
@@ -47,5 +64,7 @@ impl mmu {
         }
 
     }
+
+
 
 }

@@ -4,8 +4,8 @@ use std::{io, result};
 use std::{print, todo, u16};
 use std::fs::File;
 use std::convert::TryInto;
-use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
-use crate::byte;
+// use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use crate::Byte;
 
 
 const B_9H: u16 = u16::from_be_bytes(*b"9H");
@@ -16,26 +16,26 @@ const B_DK: u16 = u16::from_be_bytes(*b"DK");
 #[derive(Clone)]
 struct RomHeader{
     
-    entry_point: [byte; 4],
-    logo: [byte; 0x30],
-    title: [byte; 16],
+    entry_point: [Byte; 4],
+    logo: [Byte; 0x30],
+    title: [Byte; 16],
     license_flag: u16, // Changed to String from u16 bc it needs to be displayed
                         // but idk if its gonna be important later.
-    sgb_flag: byte,
-    cart_type: byte,
-    rom_size: byte,
-    ram_size: byte,
-    dest_code: byte,
-    old_license: byte,
-    version: byte,
-    checksum: byte,
+    sgb_flag: Byte,
+    cart_type: Byte,
+    rom_size: Byte,
+    ram_size: Byte,
+    dest_code: Byte,
+    old_license: Byte,
+    version: Byte,
+    checksum: Byte,
     glo_checksum: u16,    
 }
 
 pub struct CartContext {
     filename: String,
-    rom_size: byte,
-    rom_data: Vec<byte>,
+    rom_size: Byte,
+    pub rom_data: Vec<Byte>,
     header: RomHeader,
 }
 
@@ -46,10 +46,10 @@ impl CartContext {
     // }
 
     pub fn new(cart:String) -> CartContext {
-        let ctx: CartContext;
-        let mut byte_buffer = [0;1];
+        // let ctx: CartContext;
+        // let mut byte_buffer = [0;1];
         let initfilename = cart.clone();
-        let mut initrom_data: Vec<byte> = vec![];
+        let mut initrom_data: Vec<Byte> = vec![];
         let mut game_file = match File::open(cart.clone()){
             Err(why) => panic!("couldnt open {}: {}", cart, why),
             Ok(game_file) => game_file,
@@ -72,22 +72,26 @@ impl CartContext {
             Ok(header) => header,
         };
 
-        Self {
+        return Self {
             filename: initfilename,
             rom_size: initrom_data.capacity() as u8,
             rom_data: initrom_data,
             header: initheader,
         }
+        
         // return false // TODO
     }
 
-    
+    fn cart_read(addr: u16){
+
+        return 
+    }
 }
 
 
 impl RomHeader {
 
-    fn from_be_bytes(data: &Vec<byte>) -> io::Result<RomHeader>{
+    fn from_be_bytes(data: &Vec<Byte>) -> io::Result<RomHeader>{
        
         let header: RomHeader = RomHeader { 
             entry_point: (data[0x0100..0x0104].try_into().unwrap()), 
@@ -205,7 +209,7 @@ impl RomHeader {
         
     }
 
-    fn cart_type (cart_type: byte) -> String {
+    fn cart_type (cart_type: Byte) -> String {
 
         let output: String;
         
@@ -246,7 +250,7 @@ impl RomHeader {
         return output;
 
     }
-    fn rom_size (rom_size: byte) -> String {
+    fn rom_size (rom_size: Byte) -> String {
  
         let output: String;
         // let mut rom_banks = 0;
@@ -269,7 +273,7 @@ impl RomHeader {
         print!("Rom Size    : {}\n", output);
         return output;
     }
-    fn ram_size (rom_size: byte) -> String {
+    fn ram_size (rom_size: Byte) -> String {
  
         let output: String;
         // let mut rom_banks = 0;
@@ -287,7 +291,7 @@ impl RomHeader {
     }
 
 
-    fn header_checksum (check: u8, rom_data:&Vec<u8>) -> io::Result<byte> {
+    fn header_checksum (check: u8, rom_data:&Vec<u8>) -> io::Result<Byte> {
         let mut checksum: i16 = 0;
 
         for address in 0x0134..0x014D {
