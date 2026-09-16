@@ -1,7 +1,7 @@
 use core::panic;
 use std::io::{Error, SeekFrom, prelude::*};
-use std::{io, result};
-use std::{print, todo, u16};
+use std::io;
+use std::{print, u16};
 use std::fs::File;
 use std::convert::TryInto;
 // use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
@@ -14,16 +14,15 @@ const B_BL: u16 = u16::from_be_bytes(*b"BL");
 const B_DK: u16 = u16::from_be_bytes(*b"DK");
         
 #[derive(Clone)]
-struct RomHeader{
+pub struct RomHeader{
     
     entry_point: [Byte; 4],
     logo: [Byte; 0x30],
-    title: [Byte; 16],
-    license_flag: u16, // Changed to String from u16 bc it needs to be displayed
-                        // but idk if its gonna be important later.
+    pub title: [Byte; 16],
+    license_flag: u16,
     sgb_flag: Byte,
     cart_type: Byte,
-    rom_size: Byte,
+    pub rom_size: Byte,
     ram_size: Byte,
     dest_code: Byte,
     old_license: Byte,
@@ -36,7 +35,7 @@ pub struct CartContext {
     filename: String,
     rom_size: Byte,
     pub rom_data: Vec<Byte>,
-    header: RomHeader,
+    pub header: RomHeader,
 }
 
 impl CartContext {

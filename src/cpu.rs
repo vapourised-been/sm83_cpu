@@ -161,7 +161,7 @@ impl CpuContext {
             },
             
 
-            _ => panic!("Err - fetch_data"),
+            _ => print!("unimplemented Address Mode\n"),
         }
     }
 
@@ -170,7 +170,7 @@ impl CpuContext {
     
     fn execute(&self) {
     
-        print!("\n\nInstruction Executed: {:#4x}    PC: {:#4x}\n", self.current_opcode, self.regs.pc);
+        print!("Instruction Executed: {:#4x}    PC: {:#4x}\n", self.current_opcode, self.regs.pc);
         //unimplemented!("end of testing");
     
     }
