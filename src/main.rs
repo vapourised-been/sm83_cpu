@@ -5,11 +5,13 @@ mod cpu;
 mod instruction;
 mod cart;
 mod mmu;
+mod cpu_process;
+mod emu;
 pub type Byte = u8;
 
 fn main() {
 
-    let path = "roms/Tetris.gb".to_string();
+    let path = "roms/cpu_instrs.gb".to_string();
     
     let temp_cart = CartContext::new(path);
     
@@ -17,9 +19,10 @@ fn main() {
 
     let mut cpu_ctx = cpu::CpuContext::new();
     cpu_ctx.begin();
+    let mut emulator = emu::Emulator::new(cpu_ctx, temp_mmu);
 
-    for i in 0..10{
-        let _ = cpu::cpu_step(&mut cpu_ctx, &temp_mmu, &temp_cart);   
+    for _ in 0..10{
+        let _ = emu::cpu_step(&mut emulator);   
         
 
     }

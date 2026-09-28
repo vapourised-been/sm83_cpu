@@ -1,59 +1,130 @@
 use core::panic;
 use std::default;
+use std::ops::BitAnd;
 use std::print;
-use std::str::Bytes;
+// use std::str::Bytes;
 use std::unimplemented;
 
 use crate::Byte;
 use crate::cart;
 use crate::cpu;
+use crate::emu;
 use crate::instruction;
-use crate::instruction::Instruction;
+use crate::cpu_process;
+use crate::instruction::{Condition,
+    Instruction,
+    Register};
 use crate::mmu::MemUnit;
 
 // use crate::mmu::bus_read;
-use crate::instruction::opcode_instruction;
-use crate::instruction::AddressMode;
-use crate::instruction::Register;
+
+
+pub type PROC = CpuContext;
 
 pub struct CpuReg {
-    b: Byte,
-    c: Byte,
-    d: Byte,
-    e: Byte,
-    h: Byte,
-    l: Byte,
-    a: Byte,
-    f: Byte,
-    sp: u16,
-    pc: u16,            //pc: WordRegister,
+    pub b: Byte,
+    pub c: Byte,
+    pub d: Byte,
+    pub e: Byte,
+    pub h: Byte,
+    pub l: Byte,
+    pub a: Byte,
+    pub f: Byte,
+    pub sp: u16,
+    pub pc: u16,            //pc: WordRegister,
+    pub af: u16,
+    pub bc: u16,
+    pub de: u16,
+    pub hl: u16,
+
 }
 
 impl CpuReg {
 
-    pub fn cpu_regs_read(&self, reg: Option<&instruction::Register>) -> Option<WordRegister>{
+    pub fn check_cond(cpu_ctx: &cpu::CpuContext) -> bool{
+        let flag_c: bool = cpu_ctx.regs.f.bitand(0b00001000) > 0;
+        let flag_z: bool = cpu_ctx.regs.f.bitand(0b01000000) > 0;
+
+        match cpu_ctx.current_instr.cond {
+            Some(Condition::C) => return flag_c,
+            Some(Condition::Z) => return flag_z,
+            Some(Condition::NC) => return !flag_c,
+            Some(Condition::NZ) => return !flag_z,
+            None => return true,
+        }
+        
+      }
+
+    pub fn cpu_regs_read(&self, reg: Option<&instruction::Register>) -> WordRegister{
         match reg {
-            Some(Register::A) => return Some(WordRegister::low(self.a) ),
-            Some(Register::F) => return Some(WordRegister::low(self.f) ),
-            Some(Register::B) => return Some(WordRegister::low(self.b) ),
-            Some(Register::C) => return Some(WordRegister::low(self.c) ),
-            Some(Register::D) => return Some(WordRegister::low(self.d) ),
-            Some(Register::E) => return Some(WordRegister::low(self.e) ),
-            Some(Register::H) => return Some(WordRegister::low(self.h) ),
-            Some(Register::L) => return Some(WordRegister::low(self.l) ),
+            Some(Register::A) => return WordRegister::low(self.a) ,
+            Some(Register::F) => return WordRegister::low(self.f) ,
+            Some(Register::B) => return WordRegister::low(self.b) ,
+            Some(Register::C) => return WordRegister::low(self.c) ,
+            Some(Register::D) => return WordRegister::low(self.d) ,
+            Some(Register::E) => return WordRegister::low(self.e) ,
+            Some(Register::H) => return WordRegister::low(self.h) ,
+            Some(Register::L) => return WordRegister::low(self.l) ,
             
-            Some(Register::AF) => return Some(WordRegister::high((self.a as u16).swap_bytes(),)),
-            Some(Register::BC) => return Some(WordRegister::high((self.b as u16).swap_bytes(),)),
-            Some(Register::DE) => return Some(WordRegister::high((self.d as u16).swap_bytes(),)),
-            Some(Register::HL) => return Some(WordRegister::high((self.h as u16).swap_bytes(),)),
+            Some(Register::AF) => return WordRegister::high((self.a as u16).swap_bytes(),),
+            Some(Register::BC) => return WordRegister::high((self.b as u16).swap_bytes(),),
+            Some(Register::DE) => return WordRegister::high((self.d as u16).swap_bytes(),),
+            Some(Register::HL) => return WordRegister::high((self.h as u16).swap_bytes(),),
             
             Some(Register::PC) => {
-                return Some(WordRegister::high(self.pc))
+                return WordRegister::high(self.pc)
             },
-            Some(Register::SP) => return Some(WordRegister::high(self.sp)),
-            None => Some(WordRegister::default()),
+            Some(Register::SP) => return WordRegister::high(self.sp),
+            None => WordRegister::default(),
         }
     }
+
+    pub fn cpu_set_regs(&mut self, reg: Option<&instruction::Register>, val: u16) {
+        match reg {
+            Some(Register::A) => self.a = val as u8 ,
+            Some(Register::F) => self.f = val as u8 ,
+            Some(Register::B) => self.b = val as u8 ,
+            Some(Register::C) => self.c = val as u8 ,
+            Some(Register::D) => self.d = val as u8 ,
+            Some(Register::E) => self.e = val as u8 ,
+            Some(Register::H) => self.h = val as u8 ,
+            Some(Register::L) => self.l = val as u8 ,
+            
+            Some(Register::AF) => { 
+                self.a = (val >> 8) as u8; 
+                self.f = val as u8},
+            Some(Register::BC) => {
+                self.b = (val >> 8) as u8; 
+                self.c = val as u8},
+            Some(Register::DE) => {
+                self.d = (val >> 8) as u8; 
+                self.e = val as u8},
+            Some(Register::HL) => {
+                self.h = (val >> 8) as u8; 
+                self.l = val as u8},
+            
+            Some(Register::PC) => {
+                self.pc = val;
+            },
+            Some(Register::SP) => self.sp = val,
+            None => return,
+        }
+    }
+
+    pub fn cpu_set_flags(cpu_ctx: &mut cpu::CpuContext, z: u8, n: u8, h: u8, c: u8){
+        if z != 0 {
+            cpu_ctx.regs.f = 0b01000000;
+        }
+        if n != 0 {
+            cpu_ctx.regs.f = 0b00100000;
+        }
+        if h != 0 {
+            cpu_ctx.regs.f = 0b00010000;
+        }
+        if c != 0 {
+            cpu_ctx.regs.f = 0b00001000;
+        }            
+      }
 }
 
     // ie: byte, // interrupt enable
@@ -61,7 +132,8 @@ impl CpuReg {
 
 
     // impl a conversion from wordReg to u16 and vice vearsa
-enum WordRegister {
+// #[derive(Add)]
+    pub enum WordRegister {
     low(Byte),
     high(u16),
 }
@@ -73,6 +145,7 @@ impl WordRegister {
         return WordRegister::low(0x00)
 
     }
+    
 }
 
 enum size_flag {
@@ -85,14 +158,14 @@ enum size_flag {
 
 
 pub struct CpuContext{
-    regs: CpuReg,
-    fetch: u16,
-    mem_dest: u16,
-    dest_mem_flag: bool,
-    current_opcode: Byte,
-    current_instr: instruction::Instruction,
-    halted: bool, // status can be joined to one no? 
-    stepping: bool,
+    pub regs: CpuReg,
+    pub fetch: u16,
+    pub mem_dest: u16,
+    pub dest_mem_flag: bool,
+    pub current_opcode: Byte,
+    pub current_instr: instruction::Instruction,
+    pub halted: bool, // status can be joined to one no? 
+    pub stepping: bool,
 }
 
 impl CpuContext {
@@ -110,7 +183,12 @@ impl CpuContext {
                       a: (0x01),
                        f: (0x00),
                         sp: (0x0000),
-                         pc: (0x100) }, // make CpuReg::default/init
+                        pc: (0x100),
+                        af: (0x0000),
+                        bc: (0x0000),
+                        de: (0x0000),
+                        hl: (0x0000),}, // make CpuReg::default/init
+                         
             fetch: 0x00,
             mem_dest: 0x000,
             dest_mem_flag: false,
@@ -122,58 +200,9 @@ impl CpuContext {
         }
     }
 
-    fn fetch_instruction(&mut self, cpu_mmu: &MemUnit){
-        self.current_opcode = cpu_mmu.bus_read(self.regs.pc);
-        self.regs.pc += 1;
-        self.current_instr = match opcode_instruction(self.current_opcode){
-            Some(instr) => instr.clone(),
-            None => instruction::Instruction::default(), //create void instr
-        };
-    }   
-
-    fn fetch_data(&mut self, cpu_mmu: &MemUnit){
-        self.mem_dest = 0;
-        self.dest_mem_flag = false;
-
-        match self.current_instr.addr_mode {
-            AddressMode::Imp => return,
-            AddressMode::RToD8 => {
-                self.fetch = (cpu_mmu.bus_read(self.regs.pc)).into();
-                emu_cycles(1);
-                self.regs.pc += 1;
-            },
-            AddressMode::D16 => {
-                let low = cpu_mmu.bus_read(self.regs.pc);
-                emu_cycles(1);
-                let high= cpu_mmu.bus_read(self.regs.pc + 1);
-                emu_cycles(1);
-                // self.fetch = low as u16;
-                self.fetch = u16::from_le_bytes([low, high]);
-                self.regs.pc += 2;
-            },
-            AddressMode::R => {
-                
-                self.fetch = match (self.regs.cpu_regs_read(self.current_instr.reg1.as_ref())).into() {
-                    Some(WordRegister::low(word_reg)) => word_reg as u16,
-                    Some(WordRegister::high(word_reg)) => word_reg,
-                    None => 0x00,
-                };
-            },
-            
-
-            _ => print!("unimplemented Address Mode\n"),
-        }
-    }
-
 
     
-    
-    fn execute(&self) {
-    
-        print!("Instruction Executed: {:#4x}    PC: {:#4x}\n", self.current_opcode, self.regs.pc);
-        //unimplemented!("end of testing");
-    
-    }
+   
 
     pub fn begin(&mut self) {
         self.halted = false;
@@ -181,20 +210,9 @@ impl CpuContext {
 
 }
 
-pub fn cpu_step(cpu_ctx: &mut CpuContext, cpu_mmu: &MemUnit, cartContext: &cart::CartContext) -> bool{
-
-    // let mut cpu_ctx = CpuContext::new(cpu_mmu, cartContext);
-    if !cpu_ctx.halted {
-        cpu_ctx.fetch_instruction(cpu_mmu);
-        cpu_ctx.fetch_data(&cpu_mmu);
-        cpu_ctx.execute();
-        return false;
-
+ pub fn execute(emulator: &mut emu::Emulator) {
+        let op = emulator.cpu.current_instr.inst_type.clone();
+        instruction::Operation::instr_get_process(op, emulator);
+        
     }
-    return true;
-}
-fn emu_cycles(cycles: u32){
-    // TODO Sync PPU and CPU
-    let _ = cycles;
-    // unimplemented!()
-}
+
