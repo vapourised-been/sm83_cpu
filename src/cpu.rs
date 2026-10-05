@@ -32,10 +32,7 @@ pub struct CpuReg {
     pub f: Byte,
     pub sp: u16,
     pub pc: u16,            //pc: WordRegister,
-    pub af: u16,
-    pub bc: u16,
-    pub de: u16,
-    pub hl: u16,
+
 
 }
 
@@ -166,6 +163,8 @@ pub struct CpuContext{
     pub current_instr: instruction::Instruction,
     pub halted: bool, // status can be joined to one no? 
     pub stepping: bool,
+
+    pub in_ime: bool,
 }
 
 impl CpuContext {
@@ -180,14 +179,10 @@ impl CpuContext {
                    e: (0x00),
                     h: (0x00),
                      l: (0x00),
-                      a: (0x01),
+                      a: (0x00),
                        f: (0x00),
                         sp: (0x0000),
-                        pc: (0x100),
-                        af: (0x0000),
-                        bc: (0x0000),
-                        de: (0x0000),
-                        hl: (0x0000),}, // make CpuReg::default/init
+                        pc: (0x100),}, // make CpuReg::default/init
                          
             fetch: 0x00,
             mem_dest: 0x000,
@@ -196,7 +191,7 @@ impl CpuContext {
             current_instr: Instruction::default(),
             halted: true,
             stepping: false,
-
+            in_ime: false,
         }
     }
 
@@ -212,7 +207,7 @@ impl CpuContext {
 
  pub fn execute(emulator: &mut emu::Emulator) {
         let op = emulator.cpu.current_instr.inst_type.clone();
-        instruction::Operation::instr_get_process(op, emulator);
+        cpu_process::instr_get_process(op, emulator);
         
     }
 

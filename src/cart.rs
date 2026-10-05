@@ -45,8 +45,7 @@ impl CartContext {
     // }
 
     pub fn new(cart:String) -> CartContext {
-        // let ctx: CartContext;
-        // let mut byte_buffer = [0;1];
+       
         let initfilename = cart.clone();
         let mut initrom_data: Vec<Byte> = vec![];
         let mut game_file = match File::open(cart.clone()){
@@ -121,14 +120,19 @@ impl RomHeader {
         };
         let title = header.title;
         let lic = RomHeader::license_lookup(header.license_flag).unwrap();
-        print!("\ntitle       : {:?}\n", String::from_utf8(title.to_vec()).unwrap().trim_end_matches(char::from(0)));
+        if String::from_utf8(title.to_vec()).is_err() {
+            print!("\ntitle         : \"No Title\"\n");
+        } else {
+            print!("\ntitle       : {:?}\n", String::from_utf8(title.to_vec()).unwrap().trim_end_matches(char::from(0)));
+
+        }
         let _ = RomHeader::cart_type(header.cart_type);
         let _ = RomHeader::rom_size(header.rom_size);
         // let _ = RomHeader::ram_size(header.ram_size);
         // Change cart and romsize to match lic lookup
-        print!("Ram Size    : {:X} ({})\n", header.ram_size, RomHeader::ram_size(header.ram_size));
-        print!("LIC Code    : {:X} ({})\n", header.license_flag, lic);
-        print!("Checksum    : {:X}\n", header.checksum);
+        print!("Ram Size    : {:02X} ({})\n", header.ram_size, RomHeader::ram_size(header.ram_size));
+        print!("LIC Code    : {:02X} ({})\n", header.license_flag, lic);
+        print!("Checksum    : {:02X}\n", header.checksum);
         
         return Ok(header);
     }
@@ -137,7 +141,8 @@ impl RomHeader {
 
         let output:String;
         match license_flag {
-            00  => output = "Nintendo Research & Development 1".to_string(),
+            00 => output = "None".to_string(),
+            01  => output = "Nintendo Research & Development 1".to_string(),
             08 => output = "Capcom".to_string(),
             13 => output = "EA (Electronic Arts)".to_string(),
             18 => output = "Hudson Soft".to_string(),

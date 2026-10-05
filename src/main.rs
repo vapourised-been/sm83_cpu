@@ -11,7 +11,7 @@ pub type Byte = u8;
 
 fn main() {
 
-    let path = "roms/cpu_instrs.gb".to_string();
+    let path = "roms/dmg-acid2.gb".to_string();
     
     let temp_cart = CartContext::new(path);
     
@@ -38,7 +38,7 @@ mod tests {
     #[test]
     fn test_headers() {
 
-        let roms = vec!["Donkey Kong Land.gb",
+        let roms = ["Donkey Kong Land.gb",
         "Dr. Mario.gb",
         "Game Boy Camera.gb",
         "Kirby's Dream Land 2.gb",
@@ -48,7 +48,7 @@ mod tests {
         "Tetris.gb",
         "Wario Land.gb"
         ];
-        let rom_names = vec!["DONKEYKONGLAND95", 
+        let rom_names = ["DONKEYKONGLAND95", 
             "DR.MARIO",
         "GAMEBOYCAMERA",
         "KIRBY2",
