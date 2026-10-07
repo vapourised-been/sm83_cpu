@@ -1,15 +1,9 @@
-use std::ops::Add;
-
 use crate::cpu::{self, PROC, WordRegister};
 use crate::cpu_process;
 use crate::emu::{self, emu_cycles};
+use crate::instruction::Register::SP;
 use crate::instruction::{self, AddressMode, Instruction, Operation, Register};
 use crate::mmu::{self, MemUnit};
-
-// pub fn instr_get_process(cpu_ctx: &PROC, instr_type: instruction::Operation) -> instruction::Operation{
-
-//     return instr_type;
-// }
 
 fn process_jp(cpu_ctx: &mut cpu::CpuContext) {
     if cpu::CpuReg::check_cond(&cpu_ctx) {
@@ -155,8 +149,16 @@ fn process_ld(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
         {
             WordRegister::low(val) => {
                 if cpu_ctx.current_instr.addr_mode == AddressMode::Mr {
-                    let address = ptr_address(cpu_ctx, cpu_ctx.current_instr.reg1.as_ref());
-                    mem.bus_write(address, val);
+                    // let address = ptr_address(cpu_ctx, cpu_ctx.current_instr.reg1.as_ref());
+                    // mem.bus_write(address, val);
+                    // its bus write bc val is u8, need to test if that matters,
+                    // conv to u16 results in no data lost but im not writing to ROM, its to the cpu regs
+
+                    // need to find out why its a bus write
+
+                    cpu_ctx
+                        .regs
+                        .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val as u16);
                     emu_cycles(1); // need to find out cycles for this 
                 } else {
                     cpu_ctx
@@ -167,14 +169,35 @@ fn process_ld(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
             }
             WordRegister::high(val) => {
                 if cpu_ctx.current_instr.addr_mode == AddressMode::Mr {
-
-
+                    // val here is the val pointed by HL or r16
+                    cpu_ctx
+                        .regs
+                        .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val);
                 } else {
+                    // AddressMode => R to R16/A To R
+                    // cpu_ctx
+                    //     .regs
+                    //     .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val);
+                    if cpu_ctx.current_instr.addr_mode == AddressMode::A16ToR {
+                       
+                        // fetch should be n16?
+                        mem.bus_write(cpu_ctx.fetch, (val as u8) ); // check as u8 same as & FF
+                        // low_byte
+                        mem.bus_write(cpu_ctx.fetch, (val >> 8) as u8);
+                        // high_byte
+                        emu_cycles(3); // cycles = 5
+                    } else if cpu_ctx.current_instr.addr_mode == AddressMode::RToSpr {
+                        cpu_ctx.regs.cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val + cpu_ctx.fetch);
+                        // fetch should be signed value e8
                     
-
+                    } else {
+                        // should only be xF9
+                        cpu_ctx
+                            .regs
+                            .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val);
+                    }
                 }
-
-            },
+            }
             _ => return,
         }
     }
