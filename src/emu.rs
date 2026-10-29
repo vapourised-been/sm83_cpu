@@ -1,3 +1,4 @@
+// #![no_std]
 use std::println;
 
 use crate::Byte;

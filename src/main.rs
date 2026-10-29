@@ -11,7 +11,7 @@ pub type Byte = u8;
 
 fn main() {
 
-    let path = "roms/dmg-acid2.gb".to_string();
+    let path = "roms/Pokemon - Blue.gb".to_string();
     
     let temp_cart = CartContext::new(path);
     

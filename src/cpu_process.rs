@@ -1,3 +1,5 @@
+use std::print;
+
 use crate::cpu::{self, PROC, WordRegister};
 use crate::cpu_process;
 use crate::emu::{self, emu_cycles};
@@ -148,7 +150,7 @@ fn process_ld(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
             .cpu_regs_read(cpu_ctx.current_instr.reg2.as_ref())
         {
             WordRegister::low(val) => {
-                if cpu_ctx.current_instr.addr_mode == AddressMode::Mr {
+                if cpu_ctx.current_instr.addr_mode == AddressMode::RToMr { // cant be just Mr right?
                     // let address = ptr_address(cpu_ctx, cpu_ctx.current_instr.reg1.as_ref());
                     // mem.bus_write(address, val);
                     // its bus write bc val is u8, need to test if that matters,
@@ -160,7 +162,7 @@ fn process_ld(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
                         .regs
                         .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val as u16);
                     emu_cycles(1); // need to find out cycles for this 
-                } else {
+                } else if cpu_ctx.current_instr.addr_mode == AddressMode::A8ToR {
                     cpu_ctx
                         .regs
                         .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val as u16);
@@ -168,7 +170,7 @@ fn process_ld(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
                 }
             }
             WordRegister::high(val) => {
-                if cpu_ctx.current_instr.addr_mode == AddressMode::Mr {
+                if cpu_ctx.current_instr.addr_mode == AddressMode::Mr { // cant be just Mr right?
                     // val here is the val pointed by HL or r16
                     cpu_ctx
                         .regs
@@ -179,31 +181,106 @@ fn process_ld(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
                     //     .regs
                     //     .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val);
                     if cpu_ctx.current_instr.addr_mode == AddressMode::A16ToR {
-                       
                         // fetch should be n16?
-                        mem.bus_write(cpu_ctx.fetch, (val as u8) ); // check as u8 same as & FF
+                        mem.bus_write(cpu_ctx.fetch, val as u8); // check as u8 same as & FF
                         // low_byte
                         mem.bus_write(cpu_ctx.fetch, (val >> 8) as u8);
                         // high_byte
                         emu_cycles(3); // cycles = 5
                     } else if cpu_ctx.current_instr.addr_mode == AddressMode::RToSpr {
-                        cpu_ctx.regs.cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val + cpu_ctx.fetch);
+                        cpu_ctx
+                            .regs
+                            .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val + cpu_ctx.fetch);
                         // fetch should be signed value e8
-                    
                     } else {
                         // should only be xF9
                         cpu_ctx
                             .regs
                             .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), val);
                     }
+
                 }
+                // change this to a match case, 
+                // checking for Mr then A16ToR then RToSpr then else
+                
+
             }
-            _ => return,
+           
+        }
+    } else {
+        match cpu_ctx.current_instr.addr_mode {
+            AddressMode::RToD16 | AddressMode::RToD8 => {
+
+                
+            },
+            AddressMode::RToHld => {
+                
+                
+            },
+            
+            AddressMode::RToHli => {
+                
+                
+            },
+            _ => {
+
+
+            },
         }
     }
 }
 
 fn process_ldh(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
+    match cpu_ctx.current_instr.addr_mode {
+        AddressMode::RToMr => {
+            let address = ptr_address(cpu_ctx, Some(&Register::C)) + 0xFF00;
+            cpu_ctx
+                .regs
+                .cpu_set_regs(cpu_ctx.current_instr.reg1.as_ref(), address);
+            emu_cycles(1);
+        }
+        AddressMode::RToA8 => {
+            mem.bus_write(cpu_ctx.mem_dest, cpu_ctx.fetch as u8);
+            emu_cycles(2);
+        }
+        AddressMode::A8ToR => {
+            match cpu_ctx
+                .regs
+                .cpu_regs_read(cpu_ctx.current_instr.reg1.as_ref())
+            {
+                WordRegister::low(val) => {
+                    mem.bus_write(cpu_ctx.mem_dest, val);
+                    emu_cycles(2);
+                }
+                WordRegister::high(val) => {
+                    mem.bus_write(cpu_ctx.mem_dest, val as u8);
+                    // val assumes high byte is FF
+                    emu_cycles(2);
+                }
+            }
+        }
+        AddressMode::MrToR => {
+            match cpu_ctx
+                .regs
+                .cpu_regs_read(cpu_ctx.current_instr.reg2.as_ref())
+            {
+                WordRegister::low(val) => {
+                    // mem_dest should be set to C
+                    mem.bus_write(cpu_ctx.mem_dest + 0xFF00, val);
+                    emu_cycles(1);
+                }
+                WordRegister::high(val) => {
+                    // WR::high shouldnt be possible as this is only for LDH [C],A
+                    // mem_dest should be set to C
+                    mem.bus_write(cpu_ctx.mem_dest + 0xFF00, val as u8);
+                    emu_cycles(1);
+                }
+            }
+        }
+
+        _ => println!("Error in LDH process Fn"),
+    }
+
     if cpu_ctx.current_instr.addr_mode == AddressMode::Mr {
         // LDH C..
         let address = ptr_address(cpu_ctx, Some(&Register::C)) + 0xFF00;
@@ -215,7 +292,7 @@ fn process_ldh(cpu_ctx: &mut cpu::CpuContext, mem: &mut MemUnit) {
     } else {
         // LDH A ..
 
-        mem.bus_write(cpu_ctx.mem_dest, cpu_ctx.fetch as u8);
+        // mem.bus_write(cpu_ctx.mem_dest, cpu_ctx.fetch as u8);
         // cpu_ctx.dest_mem_flag = false;
     }
     emu_cycles(1);

@@ -19,10 +19,10 @@ pub enum AddressMode {
     RToA16,
     RToR,
     RToMr,
-    HliToR, // < use case on fraudwatch
-    HldToR, // < use case on fraudwatch
-    RToHli, // < use case on fraudwatch
-    RToHld, // < use case on fraudwatch
+    HliToR, 
+    HldToR, 
+    RToHli, 
+    RToHld, 
     A8ToR,
     RToA8,
     RToSpr,

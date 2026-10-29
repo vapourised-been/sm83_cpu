@@ -1,6 +1,6 @@
 use core::panic;
 use std::io::{Error, SeekFrom, prelude::*};
-use std::io;
+use std::{io, println};
 use std::{print, u16};
 use std::fs::File;
 use std::convert::TryInto;
@@ -8,18 +8,19 @@ use std::convert::TryInto;
 use crate::Byte;
 
 
-const B_9H: u16 = u16::from_be_bytes(*b"9H");
-const B_A4: u16 = u16::from_be_bytes(*b"A4");
-const B_BL: u16 = u16::from_be_bytes(*b"BL");
-const B_DK: u16 = u16::from_be_bytes(*b"DK");
-        
+// const B_9H: u16 = u16::from_be_bytes(*b"9H");
+// const B_A4: u16 = u16::from_be_bytes(*b"A4");
+// const B_BL: u16 = u16::from_be_bytes(*b"BL");
+// const B_DK: u16 = u16::from_be_bytes(*b"DK");
+// const B_00: u16 = u16::from_be_bytes(*b"00");
+
 #[derive(Clone)]
 pub struct RomHeader{
     
     entry_point: [Byte; 4],
     logo: [Byte; 0x30],
     pub title: [Byte; 16],
-    license_flag: u16,
+    license_flag: String,
     sgb_flag: Byte,
     cart_type: Byte,
     pub rom_size: Byte,
@@ -31,7 +32,7 @@ pub struct RomHeader{
     glo_checksum: u16,    
 }
 
-pub struct CartContext {
+pub struct CartContext{
     filename: String,
     rom_size: Byte,
     pub rom_data: Vec<Byte>,
@@ -90,17 +91,30 @@ impl CartContext {
 impl RomHeader {
 
     fn from_be_bytes(data: &Vec<Byte>) -> io::Result<RomHeader>{
-       
+       let lic: String;
+       // let lic_code: &str;
         let header: RomHeader = RomHeader { 
             entry_point: (data[0x0100..0x0104].try_into().unwrap()), 
             logo: (data[0x0104..0x0134].try_into().unwrap()), 
             title: (data[0x0134..0x0144].try_into().unwrap()), 
-            license_flag: (
-                match RomHeader::license_lookup(u16::from_be_bytes(data[0x0144..0x0146].try_into().unwrap())) {
-                    Ok(_) => u16::from_be_bytes(data[0x0144..0x0146].try_into().unwrap()),
-                    Err(why) => panic!("Error in license lookup: {}", why),
-                }
-            ), 
+            license_flag: ({
+                 
+                 // let bytes: [u8; 2] = match <&[u8] as TryInto<[u8;2]>>::try_into(&data[0x144..0x146]){
+                    let bytes = match std::str::from_utf8(&data[0x144..0x146]){
+                    Ok(bytes) => {
+                        bytes
+                    },
+                    Err(why) => {
+                        println!("Error in license_flag - {}", why);
+                        "AA"
+                    },
+                 };
+                
+                // lic_code = bytes;
+                lic = RomHeader::new_license_lookup(bytes);
+                println!("{}", lic);
+                bytes.to_string()
+        }), 
             sgb_flag: (data[0x0146]), 
             cart_type: (data[0x0147]), 
             rom_size: (data[0x0148]),
@@ -119,7 +133,7 @@ impl RomHeader {
             glo_checksum: (u16::from_be_bytes(data[0x014E..0x0150].try_into().unwrap())) 
         };
         let title = header.title;
-        let lic = RomHeader::license_lookup(header.license_flag).unwrap();
+        
         if String::from_utf8(title.to_vec()).is_err() {
             print!("\ntitle         : \"No Title\"\n");
         } else {
@@ -131,85 +145,85 @@ impl RomHeader {
         // let _ = RomHeader::ram_size(header.ram_size);
         // Change cart and romsize to match lic lookup
         print!("Ram Size    : {:02X} ({})\n", header.ram_size, RomHeader::ram_size(header.ram_size));
-        print!("LIC Code    : {:02X} ({})\n", header.license_flag, lic);
+        print!("LIC Code    : {:?} ({})\n", header.license_flag, RomHeader::new_license_lookup(header.license_flag.as_str()));
         print!("Checksum    : {:02X}\n", header.checksum);
         
         return Ok(header);
     }
-    fn license_lookup(license_flag: u16) -> io::Result<String>{
+    fn new_license_lookup(license_flag: &str) -> String{
         // TODO
 
         let output:String;
         match license_flag {
-            00 => output = "None".to_string(),
-            01  => output = "Nintendo Research & Development 1".to_string(),
-            08 => output = "Capcom".to_string(),
-            13 => output = "EA (Electronic Arts)".to_string(),
-            18 => output = "Hudson Soft".to_string(),
-            19 => output = "B-AI".to_string(),
-            20 => output = "KSS".to_string(),
-            22 => output = "Planning Office WADA".to_string(),
-            24 => output = "PCM Complete".to_string(),
-            25 => output = "San-X".to_string(),
-            28 => output = "Kemco".to_string(),
-            29 => output = "SETA Corporation".to_string(),
-            30 => output = "Viacom".to_string(),
-            31 => output = "Nintendo".to_string(),
-            32 => output = "Bandai".to_string(),
-            33 => output = "Ocean Software/Acclaim Entertainment".to_string(),
-            34 => output = "Konami".to_string(),
-            35 => output = "HectorSoft".to_string(),
-            37 => output = "Taito".to_string(),
-            38 => output = "Hudson Soft".to_string(),
-            39 => output = "Banpresto".to_string(),
-            41 => output = "Ubi Soft1".to_string(),
-            42 => output = "Atlus".to_string(),
-            44 => output = "Malibu Interactive".to_string(),
-            46 => output = "Angel".to_string(),
-            47 => output = "Bullet-Proof Software2".to_string(),
-            49 => output = "Irem".to_string(),
-            50 => output = "Absolute".to_string(),
-            51 => output = "Acclaim Entertainment".to_string(),
-            52 => output = "Activision".to_string(),
-            53 => output = "Sammy USA Corporation".to_string(),
-            54 => output = "Konami".to_string(),
-            55 => output = "Hi Tech Expressions".to_string(),
-            56 => output = "LJN".to_string(),
-            57 => output = "Matchbox".to_string(),
-            58 => output = "Mattel".to_string(),
-            59 => output = "Milton Bradley Company".to_string(),
-            60 => output = "Titus Interactive".to_string(),
-            61 => output = "Virgin Games Ltd.3".to_string(),
-            64 => output = "Lucasfilm Games4".to_string(),
-            67 => output = "Ocean Software".to_string(),
-            69 => output = "EA (Electronic Arts)".to_string(),
-            70 => output = "Infogrames5".to_string(),
-            71 => output = "Interplay Entertainment".to_string(),
-            72 => output = "Broderbund".to_string(),
-            73 => output = "Sculptured Software6".to_string(),
-            75 => output = "The Sales Curve Limited7".to_string(),
-            78 => output = "THQ".to_string(),
-            79 => output = "Accolade8".to_string(),
-            80 => output = "Misawa Entertainment".to_string(),
-            83 => output = "LOZC G.".to_string(),
-            86 => output = "Tokuma Shoten".to_string(),
-            87 => output = "Tsukuda Original".to_string(),
-            91 => output = "Chunsoft Co.9".to_string(),
-            92 => output = "Video System".to_string(),
-            93 => output = "Ocean Software/Acclaim Entertainment".to_string(),
-            95 => output = "Varie".to_string(),
-            96 => output = "Yonezawa10/S’Pal".to_string(),
-            97 => output = "Kaneko".to_string(),
-            99 => output = "Pack-In-Video".to_string(),
-            B_9H => output = "Bottom Up".to_string(),
-            B_A4 => output = "Ko4nami (Yu-Gi-Oh!)".to_string(),
-            B_BL => output = "MTO".to_string(),
-            B_DK => output = "Kodansha".to_string(),
+            "00" => output = "None".to_string(),
+            "01" => output = "Nintendo Research & Development 1".to_string(),
+            "08" => output = "Capcom".to_string(),
+            "13" => output = "EA (Electronic Arts)".to_string(),
+            "18" => output = "Hudson Soft".to_string(),
+            "19" => output = "B-AI".to_string(),
+            "20" => output = "KSS".to_string(),
+            "22" => output = "Planning Office WADA".to_string(),
+            "24" => output = "PCM Complete".to_string(),
+            "25" => output = "San-X".to_string(),
+            "28" => output = "Kemco".to_string(),
+            "29" => output = "SETA Corporation".to_string(),
+            "30" => output = "Viacom".to_string(),
+            "31" => output = "Nintendo".to_string(),
+            "32" => output = "Bandai".to_string(),
+            "33" => output = "Ocean Software/Acclaim Entertainment".to_string(),
+            "34" => output = "Konami".to_string(),
+            "35" => output = "HectorSoft".to_string(),
+            "37" => output = "Taito".to_string(),
+            "38" => output = "Hudson Soft".to_string(),
+            "39" => output = "Banpresto".to_string(),
+            "41" => output = "Ubi Soft1".to_string(),
+            "42" => output = "Atlus".to_string(),
+            "44" => output = "Malibu Interactive".to_string(),
+            "46" => output = "Angel".to_string(),
+            "47" => output = "Bullet-Proof Software2".to_string(),
+            "49" => output = "Irem".to_string(),
+            "50" => output = "Absolute".to_string(),
+            "51" => output = "Acclaim Entertainment".to_string(),
+            "52" => output = "Activision".to_string(),
+            "53" => output = "Sammy USA Corporation".to_string(),
+            "54" => output = "Konami".to_string(),
+            "55" => output = "Hi Tech Expressions".to_string(),
+            "56" => output = "LJN".to_string(),
+            "57" => output = "Matchbox".to_string(),
+            "58" => output = "Mattel".to_string(),
+            "59" => output = "Milton Bradley Company".to_string(),
+            "60" => output = "Titus Interactive".to_string(),
+            "61" => output = "Virgin Games Ltd.3".to_string(),
+            "64" => output = "Lucasfilm Games4".to_string(),
+            "67" => output = "Ocean Software".to_string(),
+            "69" => output = "EA (Electronic Arts)".to_string(),
+            "70" => output = "Infogrames5".to_string(),
+            "71" => output = "Interplay Entertainment".to_string(),
+            "72" => output = "Broderbund".to_string(),
+            "73" => output = "Sculptured Software6".to_string(),
+            "75" => output = "The Sales Curve Limited7".to_string(),
+            "78" => output = "THQ".to_string(),
+            "79" => output = "Accolade8".to_string(),
+            "80" => output = "Misawa Entertainment".to_string(),
+            "83" => output = "LOZC G.".to_string(),
+            "86" => output = "Tokuma Shoten".to_string(),
+            "87" => output = "Tsukuda Original".to_string(),
+            "91" => output = "Chunsoft Co.9".to_string(),
+            "92" => output = "Video System".to_string(),
+            "93" => output = "Ocean Software/Acclaim Entertainment".to_string(),
+            "95" => output = "Varie".to_string(),
+            "96" => output = "Yonezawa10/S’Pal".to_string(),
+            "97" => output = "Kaneko".to_string(),
+            "99" => output = "Pack-In-Video".to_string(),
+            "9H" => output = "Bottom Up".to_string(),
+            "A4" => output = "Ko4nami (Yu-Gi-Oh!)".to_string(),
+            "BL" => output = "MTO".to_string(),
+            "DK" => output = "Kodansha".to_string(),
             _ => output = "error_license".to_string(),
         }
 
         // let result = output.into_bytes();
-        return Ok(output);
+        return output;
         
     }
 
